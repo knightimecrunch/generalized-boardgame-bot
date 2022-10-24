@@ -33,8 +33,7 @@ class BoardScreen(Screen):
         super(BoardScreen, self).__init__(**kwargs)
     def on_kv_post(self, base_widget): #event fires once kv has loaded
         Clock.schedule_interval(partial(BoardScreen.board_update, self.ids['boardImage']), 0.25)
-        memoryBuffer.seek(0)
-        capture = CoreImage(io.BytesIO(memoryBuffer.read()), ext='png')
+        capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
         self.ids['boardImage'].texture = capture.texture
     def board_update(object, dt):
         global memoryBuffer
@@ -43,12 +42,13 @@ class BoardScreen(Screen):
         # captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
         # processedCapture = BoardScreen.draw_grid(captureCV2, (8,8))
         # capture = BoardScreen.openCVtoCoreImage(processedCapture)
-        memoryBuffer.seek(0)
-        capture = CoreImage(io.BytesIO(memoryBuffer.read()), ext='png')
+        capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
         
         # if not(capture.texture == BoardScreen.lastCapture.texture): #implement equals image check
         #     processedCapture = BoardScreen.board_processing(capture)
+        print(capture)
         object.texture = capture.texture #processedcapture is a coreimage !!!!
+        print("fuck")
             # BoardScreen.lastCapture = capture
         # else:
         #     pass #do nothing if board has not changed
