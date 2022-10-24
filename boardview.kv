@@ -1,0 +1,46 @@
+#:import NoTransition kivy.uix.screenmanager.NoTransition
+#:import CoreImage kivy.core.image.Image
+<BoardScreen>:
+    GridLayout:
+        cols: 2
+        ToggleButton:
+            text:'text'
+        Image:
+            id: boardImage
+<SettingsScreen>:
+    GridLayout:
+        cols: 2
+        Button:
+            text:'fuck'
+
+<ScreenManager>
+    BoardScreen:
+        name: "board"
+    SettingsScreen:
+        name: "settings"
+
+<ToolBar>:
+    rows: 1
+    cols: 3
+    Button: 
+        text: "Settings"
+        on_press:
+            #self.parent.parent.children[0].transition.direction = 'right'
+            self.parent.parent.children[0].transition = NoTransition()
+            self.parent.parent.children[0].current = "settings"
+    Button: 
+        text: "Board"
+        on_press:
+            #self.parent.parent.children[0].transition.direction = 'left'
+            self.parent.parent.children[0].transition = NoTransition()
+            self.parent.parent.children[0].current = "board"
+    Button: 
+        text: "Get Coords"
+        on_release: app.start_listener()
+
+BoxLayout:
+    orientation:'vertical'
+    ToolBar:
+    ScreenManager:
+        
+
