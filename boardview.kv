@@ -1,8 +1,16 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:import CoreImage kivy.core.image.Image
+<SplitBoardImages>:
+    GridLayout:
+        size: root.size
+        rows: 1
+        cols: 1
+        on_parent: root.store()
+        id: imageGrid
 <BoardScreen>:
     GridLayout:
-        cols: 2
+        cols: 3
+        SplitBoardImages:
         ToggleButton:
             text:'text'
         Image:
@@ -22,6 +30,9 @@
 <ToolBar>:
     rows: 1
     cols: 3
+    size_hint_y: None
+    size_hint_x: 0.3
+    height: 30
     Button: 
         text: "Settings"
         on_press:

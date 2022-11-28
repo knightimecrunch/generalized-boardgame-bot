@@ -20,11 +20,6 @@ import io
 import cv2 
 
 #chess engine imports
-
-
-
-
-
 memoryBuffer = io.BytesIO() 
 temp = Image.open("board.png")
 temp.save(memoryBuffer, format='png')
@@ -32,7 +27,21 @@ temp.save(memoryBuffer, format='png')
 class ToolBar(BoxLayout):
     pass
 
-
+class SplitBoardImages(GridLayout):
+    main_instance = 1
+    def __init__(self, **kwargs):
+        super(SplitBoardImages, self).__init__(**kwargs)
+    def store(self):
+        SplitBoardImages.main_instance = self
+    def display_board(tiles, h, w):
+        imageArray = SplitBoardImages.main_instance.ids["imageGrid"]
+        imageArray.cols = w
+        imageArray.rows = h
+        imageArray.clear_widgets()
+        for tile in tiles:
+            tile = BoardScreen.openCVtoCoreImage(tile)
+            imageArray.add_widget(kvImage(texture = tile.texture))
+        
 class BoardScreen(Screen):
     lastCapture = cv2.imread("board.png")
     def __init__(self, **kwargs):
@@ -49,13 +58,13 @@ class BoardScreen(Screen):
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
         #get current board state from memory as cv2
         if not(BoardScreen.is_similar(captureCV2, BoardScreen.lastCapture)): #need to improve equality check for performance
-            print("updatemade")
             BoardScreen.lastCapture = captureCV2
+            BoardScreen.board_processing(captureCV2)
+
             processedCapture = BoardScreen.draw_grid(captureCV2, (8,8))
             #process the capture
             capture = BoardScreen.openCVtoCoreImage(processedCapture) #convert frozen board state to coreimage
             object.texture = capture.texture
-            BoardScreen.board_processing(captureCV2)
             # memoryBuffer.seek(0)
             # capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
             # object.texture = capture.texture
@@ -63,12 +72,8 @@ class BoardScreen(Screen):
         return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
     
     def board_processing(boardImage):
-        processedImage = 1
         tileList = BoardScreen.slice_board(boardImage, 8)
-        
-        
-        
-        return processedImage
+        SplitBoardImages.display_board(tileList, 8, 8)
             
     def openCVtoCoreImage(anOpenCV):
         is_success, buffer = cv2.imencode(".png", anOpenCV)
@@ -98,14 +103,15 @@ class BoardScreen(Screen):
         slicesX = [(w//nslices)*n for n in range(1,nslices+1)]
         tiles = []
         prevX = 0 
-        for x in slicesX:
-            prevY = 0
-            col = board[:, prevX:x]
-            prevX = x
-            for y in slicesY:
-                tile = col[prevY:y, :]
+        prevY = 0
+        for y in slicesY:
+            row = board[prevY:y, :]
+            prevY = y
+            prevX = 0
+            for x in slicesX:
+                tile = row[:, prevX:x]
                 tiles.append(tile)
-                prevY = y
+                prevX = x
         return tiles
 
 class SettingsScreen(Screen):
