@@ -19,6 +19,12 @@ from kivy.graphics import texture
 import io
 import cv2 
 
+#chess engine imports
+
+
+
+
+
 memoryBuffer = io.BytesIO() 
 temp = Image.open("board.png")
 temp.save(memoryBuffer, format='png')
@@ -28,32 +34,40 @@ class ToolBar(BoxLayout):
 
 
 class BoardScreen(Screen):
-    lastCapture = CoreImage("Board.png")
+    lastCapture = cv2.imread("board.png")
     def __init__(self, **kwargs):
         super(BoardScreen, self).__init__(**kwargs)
     def on_kv_post(self, base_widget): #event fires once kv has loaded
         Clock.schedule_interval(partial(BoardScreen.board_update, self.ids['boardImage']), 0.25)
+        memoryBuffer.seek(0)
         capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
         self.ids['boardImage'].texture = capture.texture
     def board_update(object, dt):
         global memoryBuffer
-        # memoryBuffer.seek(0)
-        # captureCV2 = np.frombuffer(memoryBuffer.read(), dtype=np.uint8)
-        # captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
-        # processedCapture = BoardScreen.draw_grid(captureCV2, (8,8))
-        # capture = BoardScreen.openCVtoCoreImage(processedCapture)
-        capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
-        
-        # if not(capture.texture == BoardScreen.lastCapture.texture): #implement equals image check
-        #     processedCapture = BoardScreen.board_processing(capture)
-        print(capture)
-        object.texture = capture.texture #processedcapture is a coreimage !!!!
-        print("fuck")
-            # BoardScreen.lastCapture = capture
-        # else:
-        #     pass #do nothing if board has not changed
+        memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
+        captureCV2 = np.frombuffer(memoryBuffer.getvalue(), dtype=np.uint8)
+        captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
+        #get current board state from memory as cv2
+        if not(BoardScreen.is_similar(captureCV2, BoardScreen.lastCapture)): #need to improve equality check for performance
+            print("updatemade")
+            BoardScreen.lastCapture = captureCV2
+            processedCapture = BoardScreen.draw_grid(captureCV2, (8,8))
+            #process the capture
+            capture = BoardScreen.openCVtoCoreImage(processedCapture) #convert frozen board state to coreimage
+            object.texture = capture.texture
+            BoardScreen.board_processing(captureCV2)
+            # memoryBuffer.seek(0)
+            # capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
+            # object.texture = capture.texture
+    def is_similar(image1, image2):
+        return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
+    
     def board_processing(boardImage):
         processedImage = 1
+        tileList = BoardScreen.slice_board(boardImage, 8)
+        
+        
+        
         return processedImage
             
     def openCVtoCoreImage(anOpenCV):
@@ -64,7 +78,7 @@ class BoardScreen(Screen):
         tempBuffer.close()
         return aCoreImage
     
-    def draw_grid(img, grid_shape, color=(0, 255, 0), thickness=1):
+    def draw_grid(img, grid_shape, color=(0, 0, 255), thickness=1):
         h, w, _ = img.shape
         rows, cols = grid_shape
         dy, dx = h / rows, w / cols
@@ -80,10 +94,8 @@ class BoardScreen(Screen):
     
     def slice_board(board, nslices):
         h, w, channels = board.shape
-        print(h , w, channels)
         slicesY = [(h//nslices)*n for n in range(1,nslices+1)]
         slicesX = [(w//nslices)*n for n in range(1,nslices+1)]
-        print(len(slicesX), slicesY)
         tiles = []
         prevX = 0 
         for x in slicesX:
@@ -102,7 +114,7 @@ class SettingsScreen(Screen):
 class BoardView(App):
     topLeft = (0,0)
     botRight = (100,100)
-    def update_capture(*args):
+    def update_capture(*args): #this function is called 4 times a second
         global memoryBuffer
         topLeft = BoardView.topLeft
         botRight = BoardView.botRight
@@ -112,7 +124,7 @@ class BoardView(App):
         bounding_box = {'top': topLeft[1], 'left': topLeft[0], 'width': width, 'height': height}
         image = sct.grab(bounding_box)
         image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") #convert to PIL, no intermediate format
-        image.save(memoryBuffer, format='png')
+        image.save(memoryBuffer, format='png') #write image as png to global memory buffer
     def on_click(x, y, button, pressed):
         if pressed:
             BoardView.topLeft = (x, y)
