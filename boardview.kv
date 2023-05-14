@@ -1,7 +1,25 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:import CoreImage kivy.core.image.Image
+#:import Main main
 
-<SplitBoardImages>:
+<ToolsScreenManager>:
+    ChessToolsView:
+        name: "chess"
+
+<ChessToolsView>:
+    GridLayout:
+        rows: 3
+        cols: 1
+        Button:
+            text: 'Save Initial Chessboard'
+            on_press:
+                Main.Chess.initialize_chess_images_cache()
+        Label:
+            text:'temp'
+        Label:
+            text:'temp'
+
+<SplitBoardImagesView>:
     GridLayout:
         size: root.size
         rows: 1
@@ -12,9 +30,9 @@
 <BoardScreen>:
     GridLayout:
         cols: 3
-        SplitBoardImages:
-        ToggleButton:
-            text:'text'
+        SplitBoardImagesView:
+        ToolsScreenManager:
+            id: toolScreenManager
         Image:
             id: boardImage
 
@@ -24,15 +42,9 @@
         Button:
             text:'fuck'
 
-<ScreenManager>
-    BoardScreen:
-        name: "board"
-    SettingsScreen:
-        name: "settings"
-
 <ToolBar>:
     rows: 1
-    cols: 3
+    cols: 4
     size_hint_y: None
     size_hint_x: 0.3
     height: 30
@@ -40,14 +52,14 @@
         text: "Settings"
         on_press:
             #self.parent.parent.children[0].transition.direction = 'right'
-            self.parent.parent.children[0].transition = NoTransition()
-            self.parent.parent.children[0].current = "settings"
+            app.root.ids.rootScreenManager.transition = NoTransition()
+            app.root.ids.rootScreenManager.current = "settings"
     Button:
         text: "Board"
         on_press:
             #self.parent.parent.children[0].transition.direction = 'left'
-            self.parent.parent.children[0].transition = NoTransition()
-            self.parent.parent.children[0].current = "board"
+            app.root.ids.rootScreenManager.transition = NoTransition()
+            app.root.ids.rootScreenManager.current = "board"
     Button: 
         text: "Get Coords"
         on_release: app.start_listener()
@@ -56,3 +68,8 @@ BoxLayout:
     orientation:'vertical'
     ToolBar:
     ScreenManager:
+        id: rootScreenManager
+        BoardScreen:
+            name: "board"
+        SettingsScreen:
+            name: "settings"

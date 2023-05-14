@@ -1,4 +1,4 @@
-#kivy imports
+# kivy imports
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.gridlayout import GridLayout
@@ -7,7 +7,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.clock import Clock
 from kivy.uix.image import Image as kvImage
 
-#Screen capture imports, with goal of platform independance + multimonitor support
+# Screen capture imports, with goal of platform independance + multimonitor support
 from functools import partial
 from PIL import Image
 from kivy.core.image import Image as CoreImage
@@ -17,38 +17,64 @@ import mss.tools
 import numpy as np
 from kivy.graphics import texture
 import io
-import cv2 
+import cv2
+import os
+from pathlib import Path
 
-#chess engine imports
-import SSIM_PIL as ssim
-
+# Buffer to hold current screen image
 memoryBuffer = io.BytesIO() 
 temp = Image.open("board.png")
 temp.save(memoryBuffer, format='png')
 
+# Setting Widget Types of Classes for Kvlang Declarations
 class SettingsScreen(Screen):
     pass
-
+class ChessToolsView(Screen):
+    pass
 class ToolBar(BoxLayout):
     pass
+class ToolsScreenManager(ScreenManager):
+    pass
 
-class SplitBoardImages(GridLayout):
+# Game Types : Chess, Checkers*, GO*
+# *not implemented
+class Chess():
+    @staticmethod
+    def initialize_chess_images_cache():
+        # List of pieces in initial chessboard order
+        piece_order = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'] + ['pawn']*8 + ['empty']*32 + ['pawn']*8 + ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
+
+        # Get the tiles from the slice function
+        tiles = Board.slice(8)
+
+        # Ensure there are 64 pieces
+        assert len(tiles) == len(piece_order), "Number of tiles does not match the number of chess pieces"
+
+        # Save each tile with the corresponding piece name
+        for idx, tile in enumerate(tiles):
+            tile_name = piece_order[idx]
+            print(f"cache/chess/{tile_name}_{idx}.png")
+            cv2.imwrite(f"cache/chess/{tile_name}_{idx}.png", tile)
+
+class SplitBoardImagesView(GridLayout):
     main_instance = None
     def __init__(self, **kwargs):
-        super(SplitBoardImages, self).__init__(**kwargs)
+        super(SplitBoardImagesView, self).__init__(**kwargs)
+        self.cols = 1
+        self.rows = 1
 
     def store(self):
-        SplitBoardImages.main_instance = self
+        SplitBoardImagesView.main_instance = self
 
     def display_board(tiles, h, w):
-        imageArray = SplitBoardImages.main_instance.ids["imageGrid"]
+        imageArray = SplitBoardImagesView.main_instance.ids["imageGrid"]
         imageArray.cols = w
         imageArray.rows = h
         imageArray.clear_widgets()
         for tile in tiles:
             tile = Board.openCVtoCoreImage(tile)
             imageArray.add_widget(kvImage(texture = tile.texture))
-        
+
 class Board:
     lastCapture = cv2.imread("board.png")
 
@@ -64,15 +90,15 @@ class Board:
             processedCapture = Board.draw_grid(captureCV2, (8,8))
             capture = Board.openCVtoCoreImage(processedCapture)
             object.texture = capture.texture
-            
+
+    @staticmethod
+    def processing(boardImage):
+        tileList = Board.slice(8, boardImage)
+        SplitBoardImagesView.display_board(tileList, 8, 8)
+
     @staticmethod
     def is_identical(image1, image2):
         return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
-    
-    @staticmethod
-    def processing(boardImage):
-        tileList = Board.slice(boardImage, 8)
-        SplitBoardImages.display_board(tileList, 8, 8)
 
     @staticmethod
     def openCVtoCoreImage(anOpenCV):
@@ -97,15 +123,15 @@ class Board:
         return img
 
     @staticmethod
-    def slice(board, nslices):
-        h, w, channels = board.shape
-        slicesY = [(h//nslices)*n for n in range(1,nslices+1)]
-        slicesX = [(w//nslices)*n for n in range(1,nslices+1)]
+    def slice(nslices, boardImage = lastCapture):
+        h, w, channels = boardImage.shape
+        slicesY = [(h // nslices) * n for n in range(1, nslices + 1)]
+        slicesX = [(w // nslices) * n for n in range(1, nslices + 1)]
         tiles = []
         prevX = 0 
         prevY = 0
         for y in slicesY:
-            row = board[prevY:y, :]
+            row = boardImage[prevY:y, :]
             prevY = y
             prevX = 0
             for x in slicesX:
@@ -113,7 +139,7 @@ class Board:
                 tiles.append(tile)
                 prevX = x
         return tiles
-    
+
 class BoardScreen(Screen):
     def __init__(self, **kwargs):
         super(BoardScreen, self).__init__(**kwargs)
