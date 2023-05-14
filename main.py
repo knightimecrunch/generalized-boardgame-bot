@@ -38,6 +38,10 @@ class ToolsScreenManager(ScreenManager):
 
 # Game Types : Chess, Checkers*, GO*
 # *not implemented
+
+# Chess engine imports
+import SSIM_PIL as ssim
+
 class Chess():
     @staticmethod
     def initialize_chess_images_cache():
@@ -55,6 +59,14 @@ class Chess():
             tile_name = piece_order[idx]
             print(f"cache/chess/{tile_name}_{idx}.png")
             cv2.imwrite(f"cache/chess/{tile_name}_{idx}.png", tile)
+
+class Checkers():
+    pass
+
+class Go():
+    pass
+
+# App structure
 
 class SplitBoardImagesView(GridLayout):
     main_instance = None
@@ -76,6 +88,9 @@ class SplitBoardImagesView(GridLayout):
             imageArray.add_widget(kvImage(texture = tile.texture))
 
 class Board:
+    """
+        Game-type agnostic class that manages off-screen board image data. 
+    """
     lastCapture = cv2.imread("board.png")
 
     @staticmethod
@@ -110,16 +125,16 @@ class Board:
         return aCoreImage
     
     @staticmethod
-    def draw_grid(img, grid_shape, color=(0, 0, 255), thickness=1):
+    def draw_grid(img, grid_shape, color = (0, 0, 255), thickness = 1):
         h, w, _ = img.shape
         rows, cols = grid_shape
         dy, dx = h / rows, w / cols
-        for x in np.linspace(start=dx, stop=w-dx, num=cols-1):
+        for x in np.linspace(start = dx, stop = w - dx, num = cols - 1):
             x = int(round(x))
             cv2.line(img, (x, 0), (x, h), color=color, thickness=thickness)
-        for y in np.linspace(start=dy, stop=h-dy, num=rows-1):
+        for y in np.linspace(start = dy, stop = h - dy, num = rows - 1):
             y = int(round(y))
-            cv2.line(img, (0, y), (w, y), color=color, thickness=thickness)
+            cv2.line(img, (0, y), (w, y), color = color, thickness = thickness)
         return img
 
     @staticmethod
@@ -141,6 +156,9 @@ class Board:
         return tiles
 
 class BoardScreen(Screen):
+    """
+        Game-type agnostic class that manages on-screen board image data. 
+    """
     def __init__(self, **kwargs):
         super(BoardScreen, self).__init__(**kwargs)
 
