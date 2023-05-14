@@ -1,5 +1,6 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:import CoreImage kivy.core.image.Image
+
 <SplitBoardImages>:
     GridLayout:
         size: root.size
@@ -7,6 +8,7 @@
         cols: 1
         on_parent: root.store()
         id: imageGrid
+        
 <BoardScreen>:
     GridLayout:
         cols: 3
@@ -15,6 +17,7 @@
             text:'text'
         Image:
             id: boardImage
+
 <SettingsScreen>:
     GridLayout:
         cols: 2

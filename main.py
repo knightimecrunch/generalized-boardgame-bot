@@ -26,11 +26,14 @@ memoryBuffer = io.BytesIO()
 temp = Image.open("board.png")
 temp.save(memoryBuffer, format='png')
 
+class SettingsScreen(Screen):
+    pass
+
 class ToolBar(BoxLayout):
     pass
 
 class SplitBoardImages(GridLayout):
-    main_instance = 1
+    main_instance = None
     def __init__(self, **kwargs):
         super(SplitBoardImages, self).__init__(**kwargs)
 
@@ -43,44 +46,35 @@ class SplitBoardImages(GridLayout):
         imageArray.rows = h
         imageArray.clear_widgets()
         for tile in tiles:
-            tile = BoardScreen.openCVtoCoreImage(tile)
+            tile = Board.openCVtoCoreImage(tile)
             imageArray.add_widget(kvImage(texture = tile.texture))
         
-class BoardScreen(Screen):
+class Board:
     lastCapture = cv2.imread("board.png")
-    def __init__(self, **kwargs):
-        super(BoardScreen, self).__init__(**kwargs)
 
-    def on_kv_post(self, base_widget): #event fires once kv has loaded
-        Clock.schedule_interval(partial(BoardScreen.board_update, self.ids['boardImage']), 0.25)
-        memoryBuffer.seek(0)
-        capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
-        self.ids['boardImage'].texture = capture.texture
-        
-    def board_update(object, dt):
+    @staticmethod
+    def update(object, dt):
         global memoryBuffer
         memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
         captureCV2 = np.frombuffer(memoryBuffer.getvalue(), dtype=np.uint8)
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
-        #get current board state from memory as cv2
-        if not(BoardScreen.is_identical(captureCV2, BoardScreen.lastCapture)): #need to improve equality check for performance
-            BoardScreen.lastCapture = captureCV2
-            BoardScreen.board_processing(captureCV2)
-            processedCapture = BoardScreen.draw_grid(captureCV2, (8,8))
-            #process the capture
-            capture = BoardScreen.openCVtoCoreImage(processedCapture) #convert frozen board state to coreimage
+        if not(Board.is_identical(captureCV2, Board.lastCapture)):
+            Board.lastCapture = captureCV2
+            Board.processing(captureCV2)
+            processedCapture = Board.draw_grid(captureCV2, (8,8))
+            capture = Board.openCVtoCoreImage(processedCapture)
             object.texture = capture.texture
-            # memoryBuffer.seek(0)
-            # capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
-            # object.texture = capture.texture
             
+    @staticmethod
     def is_identical(image1, image2):
         return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
     
-    def board_processing(boardImage):
-        tileList = BoardScreen.slice_board(boardImage, 8)
+    @staticmethod
+    def processing(boardImage):
+        tileList = Board.slice(boardImage, 8)
         SplitBoardImages.display_board(tileList, 8, 8)
-            
+
+    @staticmethod
     def openCVtoCoreImage(anOpenCV):
         is_success, buffer = cv2.imencode(".png", anOpenCV)
         tempBuffer = io.BytesIO(buffer)
@@ -89,21 +83,21 @@ class BoardScreen(Screen):
         tempBuffer.close()
         return aCoreImage
     
+    @staticmethod
     def draw_grid(img, grid_shape, color=(0, 0, 255), thickness=1):
         h, w, _ = img.shape
         rows, cols = grid_shape
         dy, dx = h / rows, w / cols
-        # draw vertical lines
         for x in np.linspace(start=dx, stop=w-dx, num=cols-1):
             x = int(round(x))
             cv2.line(img, (x, 0), (x, h), color=color, thickness=thickness)
-        # draw horizontal lines
         for y in np.linspace(start=dy, stop=h-dy, num=rows-1):
             y = int(round(y))
             cv2.line(img, (0, y), (w, y), color=color, thickness=thickness)
         return img
-    
-    def slice_board(board, nslices):
+
+    @staticmethod
+    def slice(board, nslices):
         h, w, channels = board.shape
         slicesY = [(h//nslices)*n for n in range(1,nslices+1)]
         slicesX = [(w//nslices)*n for n in range(1,nslices+1)]
@@ -119,24 +113,31 @@ class BoardScreen(Screen):
                 tiles.append(tile)
                 prevX = x
         return tiles
+    
+class BoardScreen(Screen):
+    def __init__(self, **kwargs):
+        super(BoardScreen, self).__init__(**kwargs)
 
-class SettingsScreen(Screen):
-    pass
+    def on_kv_post(self, base_widget): #event fires once kv has loaded
+        Clock.schedule_interval(partial(Board.update, self.ids['boardImage']), 0.25)
+        memoryBuffer.seek(0)
+        capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
+        self.ids['boardImage'].texture = capture.texture
 
 class BoardView(App):
     topLeft = (0,0)
     botRight = (100,100)
-    def update_capture(*args): #this function is called 4 times a second
+    def update_capture(*args): 
         global memoryBuffer
         topLeft = BoardView.topLeft
         botRight = BoardView.botRight
         sct = mss.mss()
-        width = abs(topLeft[0] - botRight[0]) #subtract x values
-        height = abs(topLeft[1] - botRight[1]) #subtract y values
+        width = abs(topLeft[0] - botRight[0]) 
+        height = abs(topLeft[1] - botRight[1]) 
         bounding_box = {'top': topLeft[1], 'left': topLeft[0], 'width': width, 'height': height}
         image = sct.grab(bounding_box)
-        image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") #convert to PIL, no intermediate format
-        image.save(memoryBuffer, format='png') #write image as png to global memory buffer
+        image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") 
+        image.save(memoryBuffer, format='png') 
 
     def on_click(x, y, button, pressed):
         if pressed:
@@ -146,13 +147,15 @@ class BoardView(App):
             BoardView.botRight = (x,y)
             BoardView.update_capture()
             return False
+        
     def start_listener(null): 
-        # Collect events until released
         with mouse.Listener(on_click=BoardView.on_click) as listener:
             listener.join() 
     def build(self):
         Clock.schedule_interval(BoardView.update_capture, 0.25)
         pass
-    
+
 if __name__ == '__main__':
     BoardView().run()
+
+
