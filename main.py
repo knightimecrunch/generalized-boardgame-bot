@@ -20,6 +20,8 @@ import io
 import cv2 
 
 #chess engine imports
+import SSIM_PIL as ssim
+
 memoryBuffer = io.BytesIO() 
 temp = Image.open("board.png")
 temp.save(memoryBuffer, format='png')
@@ -68,7 +70,8 @@ class BoardScreen(Screen):
             # memoryBuffer.seek(0)
             # capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
             # object.texture = capture.texture
-    def is_similar(image1, image2):
+            
+    def is_identical(image1, image2):
         return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
     
     def board_processing(boardImage):
@@ -131,6 +134,7 @@ class BoardView(App):
         image = sct.grab(bounding_box)
         image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") #convert to PIL, no intermediate format
         image.save(memoryBuffer, format='png') #write image as png to global memory buffer
+
     def on_click(x, y, button, pressed):
         if pressed:
             BoardView.topLeft = (x, y)
