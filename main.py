@@ -6,6 +6,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.clock import Clock
 from kivy.uix.image import Image as kvImage
+from kivy.core.window import Window
+
 
 # Screen capture imports, with goal of platform independance + multimonitor support
 from functools import partial
@@ -40,11 +42,11 @@ import SSIM_PIL as ssim
 class Chess():
     @staticmethod
     def initialize_chess_images_cache():
-        currentBoardImage = Board.getCurrentBoard()
+        currentBoardImage = Board.get_board_as_CV2()
         cv2.imshow("temp.png", currentBoardImage)
 
         # List of pieces in initial chessboard order
-        piece_order = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'] + ['pawn']*8 + ['empty']*32 + ['pawn']*8 + ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
+        piece_order = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'] + ['pawn']*8 + ['']*32 + ['pawn']*8 + ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
 
         # Get the tiles from the slice function
         tiles = Board.slice(8, currentBoardImage)
@@ -57,12 +59,13 @@ class Chess():
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        # Save each tile with the corresponding piece name
+        # Save each non-empty tile with the corresponding piece name
         for idx, tile in enumerate(tiles):
-            tile_name = piece_order[idx]
-            filename = f"{directory}/{tile_name}_{idx}.png"
-            print(filename)
-            cv2.imwrite(filename, tile)
+            if piece_order[idx] != '':
+                tile_name = piece_order[idx] + '_black' if idx < 32 else piece_order[idx] + '_white'
+                filename = f"{directory}/{tile_name}.png"
+                print(filename)
+                cv2.imwrite(filename, tile)
 
 class Checkers():
     pass
@@ -212,7 +215,7 @@ class Application(App):
             Board.write_screen_to_buffer()
             return False
     
-    def initialize_chess_images_cache():
+    def initialize_chess_images_cache(_):
         Chess.initialize_chess_images_cache()
 
     def start_listener(null): 
@@ -220,8 +223,11 @@ class Application(App):
             listener.join() 
 
     def build(self):
+        self.title = "ChessBotYZ"
+        Window.set_system_cursor("cross")
         Clock.schedule_interval(Board.board_loop, 0.25)
         pass
+
 
 if __name__ == '__main__':
     Application().run()

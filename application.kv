@@ -21,11 +21,11 @@
 
 <SplitBoardImagesView>:
     GridLayout:
+        id: imageGrid
         size: root.size
+        on_parent: root.store()
         rows: 1
         cols: 1
-        on_parent: root.store()
-        id: imageGrid
         
 <PrimaryScreen>:
     GridLayout:
