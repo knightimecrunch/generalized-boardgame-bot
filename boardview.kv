@@ -33,13 +33,13 @@
     size_hint_y: None
     size_hint_x: 0.3
     height: 30
-    Button: 
+    Button:
         text: "Settings"
         on_press:
             #self.parent.parent.children[0].transition.direction = 'right'
             self.parent.parent.children[0].transition = NoTransition()
             self.parent.parent.children[0].current = "settings"
-    Button: 
+    Button:
         text: "Board"
         on_press:
             #self.parent.parent.children[0].transition.direction = 'left'
@@ -53,5 +53,3 @@ BoxLayout:
     orientation:'vertical'
     ToolBar:
     ScreenManager:
-        
-
