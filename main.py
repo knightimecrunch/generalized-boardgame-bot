@@ -33,8 +33,10 @@ class SplitBoardImages(GridLayout):
     main_instance = 1
     def __init__(self, **kwargs):
         super(SplitBoardImages, self).__init__(**kwargs)
+
     def store(self):
         SplitBoardImages.main_instance = self
+
     def display_board(tiles, h, w):
         imageArray = SplitBoardImages.main_instance.ids["imageGrid"]
         imageArray.cols = w
@@ -48,21 +50,22 @@ class BoardScreen(Screen):
     lastCapture = cv2.imread("board.png")
     def __init__(self, **kwargs):
         super(BoardScreen, self).__init__(**kwargs)
+
     def on_kv_post(self, base_widget): #event fires once kv has loaded
         Clock.schedule_interval(partial(BoardScreen.board_update, self.ids['boardImage']), 0.25)
         memoryBuffer.seek(0)
         capture = CoreImage(io.BytesIO(memoryBuffer.getvalue()), ext='png')
         self.ids['boardImage'].texture = capture.texture
+        
     def board_update(object, dt):
         global memoryBuffer
         memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
         captureCV2 = np.frombuffer(memoryBuffer.getvalue(), dtype=np.uint8)
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
         #get current board state from memory as cv2
-        if not(BoardScreen.is_similar(captureCV2, BoardScreen.lastCapture)): #need to improve equality check for performance
+        if not(BoardScreen.is_identical(captureCV2, BoardScreen.lastCapture)): #need to improve equality check for performance
             BoardScreen.lastCapture = captureCV2
             BoardScreen.board_processing(captureCV2)
-
             processedCapture = BoardScreen.draw_grid(captureCV2, (8,8))
             #process the capture
             capture = BoardScreen.openCVtoCoreImage(processedCapture) #convert frozen board state to coreimage
