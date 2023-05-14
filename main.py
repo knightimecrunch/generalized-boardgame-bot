@@ -106,9 +106,13 @@ class Board:
     topLeft = (0, 0)
     botRight = (100, 100)
 
+    def board_loop(dt):
+        Board.write_screen_to_buffer()
+        Board.redraw_board()
+
     def write_screen_to_buffer(*args):
         """
-            Runs continuously, called from application start.
+            Copies the contents of the screen from the top left bound to the bottom right bound to memory.
         """
         topLeft = Board.topLeft
         botRight = Board.botRight
@@ -120,35 +124,22 @@ class Board:
         image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") 
         image.save(Board.memoryBuffer, format='png') 
 
-
     @staticmethod
-    def update(object, dt):
+    def redraw_board():
         """
-            Redraws on-screen board 
+            Redraws on-screen board, adding a grid, re-read from memory is require from conversion to CoreImage.
         """
+        # reads into CV2 to make image adjustments, might be faster to read directly to CoreImage
         Board.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
         captureCV2 = np.frombuffer(Board.memoryBuffer.getvalue(), dtype=np.uint8)
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
         Board.currentBoardImage = captureCV2
-        Board.processing(captureCV2) 
+        tileList = Board.slice(8, captureCV2)
+        SplitBoardImagesView.display_board(tileList, 8, 8)
         processedCapture = Board.draw_grid(captureCV2, (8,8))
         capture = Board.openCVtoCoreImage(processedCapture)
-        PrimaryScreen.update_board(object, capture.texture)
+        PrimaryScreen.set_board(capture.texture)
 
-    @staticmethod
-    def processing(boardImage):
-        tileList = Board.slice(8, boardImage)
-        SplitBoardImagesView.display_board(tileList, 8, 8)
-
-    @staticmethod
-    def openCVtoCoreImage(anOpenCV):
-        is_success, buffer = cv2.imencode(".png", anOpenCV)
-        tempBuffer = io.BytesIO(buffer)
-        tempBuffer.seek(0)
-        aCoreImage = CoreImage(io.BytesIO(tempBuffer.read()), ext='png')
-        tempBuffer.close()
-        return aCoreImage
-    
     @staticmethod
     def draw_grid(img, grid_shape, color = (0, 0, 255), thickness = 1):
         h, w, _ = img.shape
@@ -180,22 +171,36 @@ class Board:
                 prevX = x
         return tiles
     
-    def getCurrentBoard():
-        Board.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
+    @staticmethod
+    def openCVtoCoreImage(anOpenCV):
+        is_success, buffer = cv2.imencode(".png", anOpenCV)
+        tempBuffer = io.BytesIO(buffer)
+        tempBuffer.seek(0)
+        aCoreImage = CoreImage(io.BytesIO(tempBuffer.read()), ext='png')
+        tempBuffer.close()
+        return aCoreImage
+    
+    def get_board_as_CV2():
+        Board.memoryBuffer.seek(0)
         captureCV2 = np.frombuffer(Board.memoryBuffer.getvalue(), dtype = np.uint8)
-        captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
-        return captureCV2
+        return cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
+    
+    def get_board_as_CoreImage():
+        Board.memoryBuffer.seek(0)
+        return CoreImage(io.BytesIO(Board.memoryBuffer.read()), ext='png')
 
 class PrimaryScreen(Screen):
     """
         Screen containing the board, the segmented board, and the menu for the selected game.
     """
+    self = None
+
     def __init__(self, **kwargs):
         super(PrimaryScreen, self).__init__(**kwargs)
-        Clock.schedule_interval(partial(Board.update, self), 0.25)
+        PrimaryScreen.self = self
 
-    def update_board(self, capture):
-        self.ids['boardImage'].texture = capture
+    def set_board(capture):
+        PrimaryScreen.self.ids['boardImage'].texture = capture
 
 class Application(App):
     def on_click(x, y, button, pressed):
@@ -215,7 +220,7 @@ class Application(App):
             listener.join() 
 
     def build(self):
-        Clock.schedule_interval(Board.write_screen_to_buffer, 0.25)
+        Clock.schedule_interval(Board.board_loop, 0.25)
         pass
 
 if __name__ == '__main__':
