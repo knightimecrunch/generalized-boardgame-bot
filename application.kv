@@ -1,5 +1,6 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:import CoreImage kivy.core.image.Image
+#: import ChessBoard chessboard.ChessBoard
 #:import Main main
 
 <ToolsScreenManager>:
@@ -16,31 +17,31 @@
                 app.initialize_chess_images_cache()
         Label:
             text:'temp'
-        Label:
-            text:'temp'
+        ChessToolsTabsView:
 
-<SplitBoardImagesView>:
+<ChessToolsTabsView>:
+    do_default_tab: False
+
+    TabbedPanelItem:
+        ImageMatrixView:
+            id: splitBoardPrimary
+    TabbedPanelItem:
+        text: '2'
+        Label:
+            text: 'Second tab content area'
+    TabbedPanelItem:
+        text: '3'
+        RstDocument:
+            text:
+                '\\n'.join(("Hello world", "-----------",
+                "You are in the third tab."))
+
+<ImageMatrixView>:
     GridLayout:
         id: imageGrid
         size: root.size
-        on_parent: root.store()
         rows: 1
         cols: 1
-        
-<PrimaryScreen>:
-    GridLayout:
-        cols: 3
-        SplitBoardImagesView:
-        ToolsScreenManager:
-            id: toolScreenManager
-        Image:
-            id: boardImage
-
-<SettingsScreen>:
-    GridLayout:
-        cols: 2
-        Button:
-            text:'fuck'
 
 <ToolBar>:
     rows: 1
@@ -63,6 +64,33 @@
     Button: 
         text: "Get Coords"
         on_release: app.start_listener()
+
+<GameBoardView>
+    orientation:'vertical'
+    id: gameBoardView
+    GridLayout:
+        rows: 2
+        cols: 1
+
+        ToggleButton:
+            id: 'auto'
+            text:'Read From Screen'
+
+<PrimaryScreen>:
+    GridLayout:
+        cols: 3
+        GameBoardView:
+            id: gameBoardView
+        ToolsScreenManager:
+            id: toolScreenManager
+        Image:
+            id: boardImage
+
+<SettingsScreen>:
+    GridLayout:
+        cols: 2
+        Button:
+            text:'fuck'
 
 BoxLayout:
     orientation:'vertical'

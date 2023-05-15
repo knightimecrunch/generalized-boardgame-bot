@@ -7,7 +7,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.clock import Clock
 from kivy.uix.image import Image as kvImage
 from kivy.core.window import Window
-
+from kivy.uix.tabbedpanel import TabbedPanel
 
 # Screen capture imports, with goal of platform independance + multimonitor support
 from functools import partial
@@ -28,15 +28,20 @@ class SettingsScreen(Screen):
     pass
 class ChessToolsView(Screen):
     pass
+class ChessToolsTabsView(TabbedPanel):
+    pass
 class ToolBar(BoxLayout):
     pass
 class ToolsScreenManager(ScreenManager):
+    pass
+class GameBoardView(BoxLayout):
     pass
 
 # Game Types : Chess, Checkers*, GO*
 # *not implemented
 
 # Chess engine imports
+import chessboard as ChessBoard
 import SSIM_PIL as ssim
 
 class Chess():
@@ -75,18 +80,17 @@ class Go():
 
 # App structure
 
-class SplitBoardImagesView(GridLayout):
-    main_instance = None
+class ImageMatrixView(GridLayout):
+    self = None
+
     def __init__(self, **kwargs):
-        super(SplitBoardImagesView, self).__init__(**kwargs)
+        super(ImageMatrixView, self).__init__(**kwargs)
+        ImageMatrixView.self = self
         self.cols = 1
         self.rows = 1
 
-    def store(self):
-        SplitBoardImagesView.main_instance = self
-
     def display_board(tiles, h, w):
-        imageArray = SplitBoardImagesView.main_instance.ids["imageGrid"]
+        imageArray = ImageMatrixView.self.ids["imageGrid"]
         imageArray.cols = w
         imageArray.rows = h
         imageArray.clear_widgets()
@@ -138,7 +142,7 @@ class Board:
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
         Board.currentBoardImage = captureCV2
         tileList = Board.slice(8, captureCV2)
-        SplitBoardImagesView.display_board(tileList, 8, 8)
+        ImageMatrixView.display_board(tileList, 8, 8)
         processedCapture = Board.draw_grid(captureCV2, (8,8))
         capture = Board.openCVtoCoreImage(processedCapture)
         PrimaryScreen.set_board(capture.texture)
@@ -150,7 +154,7 @@ class Board:
         dy, dx = h / rows, w / cols
         for x in np.linspace(start = dx, stop = w - dx, num = cols - 1):
             x = int(round(x))
-            cv2.line(img, (x, 0), (x, h), color=color, thickness=thickness)
+            cv2.line(img, (x, 0), (x, h), color = color, thickness = thickness)
         for y in np.linspace(start = dy, stop = h - dy, num = rows - 1):
             y = int(round(y))
             cv2.line(img, (0, y), (w, y), color = color, thickness = thickness)
@@ -206,6 +210,8 @@ class PrimaryScreen(Screen):
         PrimaryScreen.self.ids['boardImage'].texture = capture
 
 class Application(App):
+    gameType = "chess"
+
     def on_click(x, y, button, pressed):
         if pressed:
             Board.topLeft = (x, y)
@@ -224,7 +230,11 @@ class Application(App):
 
     def build(self):
         self.title = "ChessBotYZ"
-        Window.set_system_cursor("cross")
+        # Window.set_system_cursor("cross")
+        # Instead use whole screen imshow/cv2 then draw intersecting lines following cursor on that imshow
+        if Application.gameType == "chess":
+            print(PrimaryScreen.self.ids)
+            PrimaryScreen.self.ids['gameBoardView'].children[0].add_widget(ChessBoard.ChessBoard(40))
         Clock.schedule_interval(Board.board_loop, 0.25)
         pass
 
