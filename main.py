@@ -47,14 +47,14 @@ import SSIM_PIL as ssim
 class Chess():
     @staticmethod
     def initialize_chess_images_cache():
-        currentBoardImage = Board.get_board_as_CV2()
+        currentBoardImage = BoardViewport.get_board_as_CV2()
         cv2.imshow("temp.png", currentBoardImage)
 
         # List of pieces in initial chessboard order
         piece_order = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'] + ['pawn']*8 + ['']*32 + ['pawn']*8 + ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
 
         # Get the tiles from the slice function
-        tiles = Board.slice(8, currentBoardImage)
+        tiles = BoardViewport.slice(8, currentBoardImage)
 
         # Ensure there are 64 pieces
         assert len(tiles) == len(piece_order), "Number of tiles does not match the number of chess pieces"
@@ -95,10 +95,10 @@ class ImageMatrixView(GridLayout):
         imageArray.rows = h
         imageArray.clear_widgets()
         for tile in tiles:
-            tile = Board.openCVtoCoreImage(tile)
+            tile = BoardViewport.openCVtoCoreImage(tile)
             imageArray.add_widget(kvImage(texture = tile.texture))
 
-class Board:
+class BoardViewport:
     """
         Game-type agnostic class that manages off-screen board image data. 
     """
@@ -114,22 +114,22 @@ class Board:
     botRight = (100, 100)
 
     def board_loop(dt):
-        Board.write_screen_to_buffer()
-        Board.redraw_board()
+        BoardViewport.write_screen_to_buffer()
+        BoardViewport.redraw_board()
 
     def write_screen_to_buffer(*args):
         """
             Copies the contents of the screen from the top left bound to the bottom right bound to memory.
         """
-        topLeft = Board.topLeft
-        botRight = Board.botRight
+        topLeft = BoardViewport.topLeft
+        botRight = BoardViewport.botRight
         sct = mss.mss()
         width = abs(topLeft[0] - botRight[0]) 
         height = abs(topLeft[1] - botRight[1]) 
         bounding_box = {'top': topLeft[1], 'left': topLeft[0], 'width': width, 'height': height}
         image = sct.grab(bounding_box)
         image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") 
-        image.save(Board.memoryBuffer, format='png') 
+        image.save(BoardViewport.memoryBuffer, format='png') 
 
     @staticmethod
     def redraw_board():
@@ -137,14 +137,18 @@ class Board:
             Redraws on-screen board, adding a grid, re-read from memory is require from conversion to CoreImage.
         """
         # reads into CV2 to make image adjustments, might be faster to read directly to CoreImage
-        Board.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
-        captureCV2 = np.frombuffer(Board.memoryBuffer.getvalue(), dtype=np.uint8)
+        BoardViewport.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
+        captureCV2 = np.frombuffer(BoardViewport.memoryBuffer.getvalue(), dtype=np.uint8)
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
-        Board.currentBoardImage = captureCV2
-        tileList = Board.slice(8, captureCV2)
+        BoardViewport.currentBoardImage = captureCV2
+
+        # draw to sliced board view
+        tileList = BoardViewport.slice(8, captureCV2)
         ImageMatrixView.display_board(tileList, 8, 8)
-        processedCapture = Board.draw_grid(captureCV2, (8,8))
-        capture = Board.openCVtoCoreImage(processedCapture)
+
+        # draw to board viewport
+        processedCapture = BoardViewport.draw_grid(captureCV2, (8,8))
+        capture = BoardViewport.openCVtoCoreImage(processedCapture)
         PrimaryScreen.set_board(capture.texture)
 
     @staticmethod
@@ -188,13 +192,13 @@ class Board:
         return aCoreImage
     
     def get_board_as_CV2():
-        Board.memoryBuffer.seek(0)
-        captureCV2 = np.frombuffer(Board.memoryBuffer.getvalue(), dtype = np.uint8)
+        BoardViewport.memoryBuffer.seek(0)
+        captureCV2 = np.frombuffer(BoardViewport.memoryBuffer.getvalue(), dtype = np.uint8)
         return cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
     
     def get_board_as_CoreImage():
-        Board.memoryBuffer.seek(0)
-        return CoreImage(io.BytesIO(Board.memoryBuffer.read()), ext='png')
+        BoardViewport.memoryBuffer.seek(0)
+        return CoreImage(io.BytesIO(BoardViewport.memoryBuffer.read()), ext='png')
 
 class PrimaryScreen(Screen):
     """
@@ -212,20 +216,20 @@ class PrimaryScreen(Screen):
 class Application(App):
     gameType = "chess"
 
-    def on_click(x, y, button, pressed):
+    def update_board_corners(x, y, button, pressed):
         if pressed:
-            Board.topLeft = (x, y)
+            BoardViewport.topLeft = (x, y)
         print('{0} at {1}'.format('Pressed' if pressed else 'Released', (x, y)))
         if not pressed:
-            Board.botRight = (x,y)
-            Board.write_screen_to_buffer()
+            BoardViewport.botRight = (x,y)
+            BoardViewport.write_screen_to_buffer()
             return False
     
     def initialize_chess_images_cache(_):
         Chess.initialize_chess_images_cache()
 
-    def start_listener(null): 
-        with mouse.Listener(on_click=Application.on_click) as listener:
+    def start_click_and_drag(null): 
+        with mouse.Listener(on_click=Application.update_board_corners) as listener:
             listener.join() 
 
     def build(self):
@@ -235,7 +239,7 @@ class Application(App):
         if Application.gameType == "chess":
             print(PrimaryScreen.self.ids)
             PrimaryScreen.self.ids['gameBoardView'].children[0].add_widget(ChessBoard.ChessBoard(40))
-        Clock.schedule_interval(Board.board_loop, 0.25)
+        Clock.schedule_interval(BoardViewport.board_loop, 0.25)
         pass
 
 
