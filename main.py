@@ -8,6 +8,15 @@ from kivy.clock import Clock
 from kivy.uix.image import Image as kvImage
 from kivy.core.window import Window
 from kivy.uix.tabbedpanel import TabbedPanel
+from kivy.uix.screenmanager import ScreenManager, NoTransition
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.image import Image
+from kivy.uix.rst import RstDocument
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 
 # Screen capture imports, with goal of platform independance + multimonitor support
 from functools import partial
@@ -22,63 +31,99 @@ import io
 import cv2
 import os
 from pathlib import Path
+import gameboard
+from gameboard import ChessBoardUI  # assuming you have this module
 
-# Setting Widget Types of Classes for Kvlang Declarations
-class SettingsScreen(Screen):
-    pass
-class ChessToolsView(Screen):
-    pass
-class ChessToolsTabsView(TabbedPanel):
-    pass
-class ToolBar(BoxLayout):
-    pass
+
 class ToolsScreenManager(ScreenManager):
-    pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.add_widget(ChessToolsView())
+    
+
+class ChessToolsView(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = GridLayout(rows=3, cols=1)
+
+        layout.add_widget(Button(text='Save Initial Chessboard', on_press=Application.initialize_chess_images_cache))
+        layout.add_widget(Label(text='temp'))
+        layout.add_widget(ChessToolsTabsView())
+        self.add_widget(layout)
+
+class ChessToolsTabsView(TabbedPanel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.do_default_tab = False
+
+        self.add_widget(TabbedPanelItem(content=ImageMatrixView()))
+        self.add_widget(TabbedPanelItem(text='2', content=Label(text='Second tab content area')))
+        self.add_widget(TabbedPanelItem(text='3', content=RstDocument(text='\\n'.join(("Hello world", "-----------", "You are in the third tab.")))))
+
+class ToolBar(GridLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.rows = 1
+        self.cols = 4
+        self.size_hint_y = None
+        self.size_hint_x = 0.3
+        self.height = 30
+
+        self.add_widget(Button(text="Settings", on_press=self.change_screen))
+        self.add_widget(Button(text="Board", on_press=self.change_screen))
+        self.add_widget(Button(text="Get Coords", on_release=Application.start_click_and_drag))
+
+    def change_screen(self, instance):
+        screen_name = instance.text.lower()  # Assuming the text of the button is the screen name
+        direction = "right" if screen_name == "settings" else "left"
+        self.parent.parent.children[0].transition = NoTransition()
+        self.parent.parent.children[0].transition.direction = direction
+        self.parent.parent.children[0].current = screen_name
+
+
 class GameBoardView(BoxLayout):
-    pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
 
-# Game Types : Chess, Checkers*, GO*
-# *not implemented
+        layout = GridLayout(rows=2, cols=1)
+        layout.add_widget(ToggleButton(text='Read From Screen'))
+        self.add_widget(layout)
+        return self
 
-# Chess engine imports
-import chessboard as ChessBoard
-import SSIM_PIL as ssim
 
-class Chess():
-    @staticmethod
-    def initialize_chess_images_cache():
-        currentBoardImage = Board.get_board_as_CV2()
-        cv2.imshow("temp.png", currentBoardImage)
+class SettingsScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = GridLayout(cols=2)
+        layout.add_widget(Button(text='Button'))
+        self.add_widget(layout)
 
-        # List of pieces in initial chessboard order
-        piece_order = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'] + ['pawn']*8 + ['']*32 + ['pawn']*8 + ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
+class PrimaryScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = GridLayout(cols=3)
+        layout.add_widget(Label(text="FUCKLER"))
+        layout.add_widget(GameBoardView())
+        layout.add_widget(ToolsScreenManager())
+        layout.add_widget(Image())
+        self.add_widget(layout)
 
-        # Get the tiles from the slice function
-        tiles = Board.slice(8, currentBoardImage)
+class RootScreen(BoxLayout):
+    root_screen_manager = None
 
-        # Ensure there are 64 pieces
-        assert len(tiles) == len(piece_order), "Number of tiles does not match the number of chess pieces"
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
 
-        # Create the cache/chess directory if it doesn't exist
-        directory = "cache/chess"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        self.add_widget(ToolBar(size_hint=(1, 0.3)))  # Adjusted size_hint
+        self.root_screen_manager = ScreenManager()
 
-        # Save each non-empty tile with the corresponding piece name
-        for idx, tile in enumerate(tiles):
-            if piece_order[idx] != '':
-                tile_name = piece_order[idx] + '_black' if idx < 32 else piece_order[idx] + '_white'
-                filename = f"{directory}/{tile_name}.png"
-                print(filename)
-                cv2.imwrite(filename, tile)
-
-class Checkers():
-    pass
-
-class Go():
-    pass
-
-# App structure
+        print(self.root_screen_manager)
+        self.root_screen_manager.add_widget(PrimaryScreen(name='primary'))  # Added name
+        self.root_screen_manager.add_widget(SettingsScreen(name='settings'))  # Added name
+        self.root_screen_manager.current = 'primary' 
+        self.add_widget(self.root_screen_manager)
 
 class ImageMatrixView(GridLayout):
     self = None
@@ -95,10 +140,10 @@ class ImageMatrixView(GridLayout):
         imageArray.rows = h
         imageArray.clear_widgets()
         for tile in tiles:
-            tile = Board.openCVtoCoreImage(tile)
+            tile = BoardViewport.openCVtoCoreImage(tile)
             imageArray.add_widget(kvImage(texture = tile.texture))
 
-class Board:
+class BoardViewport:
     """
         Game-type agnostic class that manages off-screen board image data. 
     """
@@ -114,22 +159,22 @@ class Board:
     botRight = (100, 100)
 
     def board_loop(dt):
-        Board.write_screen_to_buffer()
-        Board.redraw_board()
+        BoardViewport.write_screen_to_buffer()
+        BoardViewport.redraw_board()
 
     def write_screen_to_buffer(*args):
         """
             Copies the contents of the screen from the top left bound to the bottom right bound to memory.
         """
-        topLeft = Board.topLeft
-        botRight = Board.botRight
+        topLeft = BoardViewport.topLeft
+        botRight = BoardViewport.botRight
         sct = mss.mss()
         width = abs(topLeft[0] - botRight[0]) 
         height = abs(topLeft[1] - botRight[1]) 
         bounding_box = {'top': topLeft[1], 'left': topLeft[0], 'width': width, 'height': height}
         image = sct.grab(bounding_box)
         image = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") 
-        image.save(Board.memoryBuffer, format='png') 
+        image.save(BoardViewport.memoryBuffer, format='png') 
 
     @staticmethod
     def redraw_board():
@@ -137,14 +182,18 @@ class Board:
             Redraws on-screen board, adding a grid, re-read from memory is require from conversion to CoreImage.
         """
         # reads into CV2 to make image adjustments, might be faster to read directly to CoreImage
-        Board.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
-        captureCV2 = np.frombuffer(Board.memoryBuffer.getvalue(), dtype=np.uint8)
+        BoardViewport.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
+        captureCV2 = np.frombuffer(BoardViewport.memoryBuffer.getvalue(), dtype=np.uint8)
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
-        Board.currentBoardImage = captureCV2
-        tileList = Board.slice(8, captureCV2)
+        BoardViewport.currentBoardImage = captureCV2
+
+        # draw to sliced board view
+        tileList = BoardViewport.slice(8, captureCV2)
         ImageMatrixView.display_board(tileList, 8, 8)
-        processedCapture = Board.draw_grid(captureCV2, (8,8))
-        capture = Board.openCVtoCoreImage(processedCapture)
+
+        # draw to board viewport
+        processedCapture = BoardViewport.draw_grid(captureCV2, (8,8))
+        capture = BoardViewport.openCVtoCoreImage(processedCapture)
         PrimaryScreen.set_board(capture.texture)
 
     @staticmethod
@@ -188,13 +237,13 @@ class Board:
         return aCoreImage
     
     def get_board_as_CV2():
-        Board.memoryBuffer.seek(0)
-        captureCV2 = np.frombuffer(Board.memoryBuffer.getvalue(), dtype = np.uint8)
+        BoardViewport.memoryBuffer.seek(0)
+        captureCV2 = np.frombuffer(BoardViewport.memoryBuffer.getvalue(), dtype = np.uint8)
         return cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
     
     def get_board_as_CoreImage():
-        Board.memoryBuffer.seek(0)
-        return CoreImage(io.BytesIO(Board.memoryBuffer.read()), ext='png')
+        BoardViewport.memoryBuffer.seek(0)
+        return CoreImage(io.BytesIO(BoardViewport.memoryBuffer.read()), ext='png')
 
 class PrimaryScreen(Screen):
     """
@@ -212,31 +261,30 @@ class PrimaryScreen(Screen):
 class Application(App):
     gameType = "chess"
 
-    def on_click(x, y, button, pressed):
+    def update_board_corners(x, y, button, pressed):
         if pressed:
-            Board.topLeft = (x, y)
+            BoardViewport.topLeft = (x, y)
         print('{0} at {1}'.format('Pressed' if pressed else 'Released', (x, y)))
         if not pressed:
-            Board.botRight = (x,y)
-            Board.write_screen_to_buffer()
+            BoardViewport.botRight = (x,y)
+            BoardViewport.write_screen_to_buffer()
             return False
     
     def initialize_chess_images_cache(_):
-        Chess.initialize_chess_images_cache()
+        gameboard.Chess.initialize_chess_images_cache()
 
-    def start_listener(null): 
-        with mouse.Listener(on_click=Application.on_click) as listener:
+    def start_click_and_drag(null): 
+        with mouse.Listener(on_click=Application.update_board_corners) as listener:
             listener.join() 
 
     def build(self):
         self.title = "ChessBotYZ"
+        return RootScreen()
         # Window.set_system_cursor("cross")
         # Instead use whole screen imshow/cv2 then draw intersecting lines following cursor on that imshow
-        if Application.gameType == "chess":
-            print(PrimaryScreen.self.ids)
-            PrimaryScreen.self.ids['gameBoardView'].children[0].add_widget(ChessBoard.ChessBoard(40))
-        Clock.schedule_interval(Board.board_loop, 0.25)
-        pass
+        # if Application.gameType == "chess":
+            # PrimaryScreen.self.ids['gameBoardView'].children[0].add_widget(gameboard.ChessBoard.ChessBoard(40))
+        # Clock.schedule_interval(BoardViewport.board_loop, 0.25)
 
 
 if __name__ == '__main__':

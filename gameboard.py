@@ -7,6 +7,46 @@ from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 from kivy.core.window import Window
 
+# Chess engine imports
+import os
+import gameboard
+import SSIM_PIL as ssim
+import cv2
+
+class Chess():
+    fenGameState = ""
+
+    def __init__(self, **kwargs):
+        self.fenGameState = gameboard.ChessBoardUI.fen()
+
+    # @staticmethod
+    # def initialize_chess_images_cache():
+    #     currentBoardImage = main.Board.get_board_as_CV2()
+    #     cv2.imshow("temp.png", currentBoardImage)
+
+    #     # List of pieces in initial chessboard order
+    #     piece_order = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'] + ['pawn']*8 + ['']*32 + ['pawn']*8 + ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
+
+    #     # Get the tiles from the slice function
+    #     tiles = main.Board.slice(8, currentBoardImage)
+
+    #     # Ensure there are 64 pieces
+    #     assert len(tiles) == len(piece_order), "Number of tiles does not match the number of chess pieces"
+
+    #     # Create the cache/chess directory if it doesn't exist
+    #     directory = "cache/chess"
+    #     if not os.path.exists(directory):
+    #         os.makedirs(directory)
+
+    #     # Save each non-empty tile with the corresponding piece name
+    #     for idx, tile in enumerate(tiles):
+    #         if piece_order[idx] != '':
+    #             tile_name = piece_order[idx] + '_black' if idx < 32 else piece_order[idx] + '_white'
+    #             filename = f"{directory}/{tile_name}.png"
+    #             print(filename)
+    #             cv2.imwrite(filename, tile) 
+
+
 class DraggableChessPiece(Scatter):
     def __init__(self, text, chess_board, **kwargs):
         super(DraggableChessPiece, self).__init__(**kwargs)
@@ -31,6 +71,12 @@ class DraggableChessPiece(Scatter):
         return super(DraggableChessPiece, self).on_touch_move(touch)
 
     def on_touch_up(self, touch):
+        if True:
+            pass
+
+
+
+
         if self.origin:
             square_size = self.chess_board.square_size
             self.x = round((self.x) / square_size) * square_size
@@ -63,9 +109,9 @@ class DraggableChessPiece(Scatter):
         return super(DraggableChessPiece, self).on_touch_up(touch)
 
 
-class ChessBoard(Widget):
+class ChessBoardUI(Widget):
     def __init__(self, square_size, **kwargs):
-        super(ChessBoard, self).__init__(**kwargs)
+        super(ChessBoardUI, self).__init__(**kwargs)
         self.cols = 8
         self.rows = 8
         self.square_size = square_size
@@ -92,9 +138,49 @@ class ChessBoard(Widget):
                                                 pos=(j * self.square_size, i * self.square_size))
                     self.add_widget(piece)
 
+
+
+    def fen(self):
+        """
+            Returns state of game on board in fen format.
+        """
+        empty = 0
+        fen = ''
+        for i in range(8):  # 8x8 board
+            for j in range(8):  # iterate through files
+                piece = self.piece_layout[i][j]
+                if piece != ' ':  # if the square is not empty
+                    if empty > 0:
+                        fen += str(empty)
+                        empty = 0
+                    fen += piece
+                else:
+                    empty += 1
+
+                if j == 7:  # end of the row
+                    if empty > 0:
+                        fen += str(empty)
+                    if i != 7:  # if not the last row
+                        fen += '/'
+                    empty = 0
+        return fen
+    
+    def ascii(self):
+        s = '   +------------------------+\n'
+        for i in range(8):  # 8x8 board
+            s += ' ' + str(8 - i) + ' |'  # display the rank
+            for j in range(8):  # iterate through files
+                piece = self.piece_layout[i][j]
+                s += ' ' + piece + ' '
+            s += '|\n'
+
+        s += '   +------------------------+\n'
+        s += '     a  b  c  d  e  f  g  h'
+        return s
+    
 class ChessApp(App):
     def build(self):
-        chess_board = ChessBoard(40)
+        chess_board = ChessBoardUI(40)
         Window.size = (chess_board.cols * chess_board.square_size, chess_board.rows * chess_board.square_size)
         return chess_board
 

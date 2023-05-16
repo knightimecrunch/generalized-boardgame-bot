@@ -1,103 +1,103 @@
-#:import NoTransition kivy.uix.screenmanager.NoTransition
-#:import CoreImage kivy.core.image.Image
-#: import ChessBoard chessboard.ChessBoard
-#:import Main main
+# #:import NoTransition kivy.uix.screenmanager.NoTransition
+# #:import CoreImage kivy.core.image.Image
+# #:import ChessBoard gameboard.ChessBoardUI
+# #:import Main main
 
-<ToolsScreenManager>:
-    ChessToolsView:
-        name: "chess"
+# <ToolsScreenManager>:
+#     ChessToolsView:
+#         name: "chess"
 
-<ChessToolsView>:
-    GridLayout:
-        rows: 3
-        cols: 1
-        Button:
-            text: 'Save Initial Chessboard'
-            on_press:
-                app.initialize_chess_images_cache()
-        Label:
-            text:'temp'
-        ChessToolsTabsView:
+# <ChessToolsView>:
+#     GridLayout:
+#         rows: 3
+#         cols: 1
+#         Button:
+#             text: 'Save Initial Chessboard'
+#             on_press:
+#                 app.initialize_chess_images_cache()
+#         Label:
+#             text:'temp'
+#         ChessToolsTabsView:
 
-<ChessToolsTabsView>:
-    do_default_tab: False
+# <ChessToolsTabsView>:
+#     do_default_tab: False
 
-    TabbedPanelItem:
-        ImageMatrixView:
-            id: splitBoardPrimary
-    TabbedPanelItem:
-        text: '2'
-        Label:
-            text: 'Second tab content area'
-    TabbedPanelItem:
-        text: '3'
-        RstDocument:
-            text:
-                '\\n'.join(("Hello world", "-----------",
-                "You are in the third tab."))
+#     TabbedPanelItem:
+#         ImageMatrixView:
+#             id: splitBoardPrimary
+#     TabbedPanelItem:
+#         text: '2'
+#         Label:
+#             text: 'Second tab content area'
+#     TabbedPanelItem:
+#         text: '3'
+#         RstDocument:
+#             text:
+#                 '\\n'.join(("Hello world", "-----------",
+#                 "You are in the third tab."))
 
-<ImageMatrixView>:
-    GridLayout:
-        id: imageGrid
-        size: root.size
-        rows: 1
-        cols: 1
+# <ImageMatrixView>:
+#     GridLayout:
+#         id: imageGrid
+#         size: root.size
+#         rows: 1
+#         cols: 1
 
-<ToolBar>:
-    rows: 1
-    cols: 4
-    size_hint_y: None
-    size_hint_x: 0.3
-    height: 30
-    Button:
-        text: "Settings"
-        on_press:
-            #self.parent.parent.children[0].transition.direction = 'right'
-            app.root.ids.rootScreenManager.transition = NoTransition()
-            app.root.ids.rootScreenManager.current = "settings"
-    Button:
-        text: "Board"
-        on_press:
-            #self.parent.parent.children[0].transition.direction = 'left'
-            app.root.ids.rootScreenManager.transition = NoTransition()
-            app.root.ids.rootScreenManager.current = "board"
-    Button: 
-        text: "Get Coords"
-        on_release: app.start_listener()
+# <ToolBar>:
+#     rows: 1
+#     cols: 4
+#     size_hint_y: None
+#     size_hint_x: 0.3
+#     height: 30
+#     Button:
+#         text: "Settings"
+#         on_press:
+#             #self.parent.parent.children[0].transition.direction = 'right'
+#             app.root.ids.rootScreenManager.transition = NoTransition()
+#             app.root.ids.rootScreenManager.current = "settings"
+#     Button:
+#         text: "Board"
+#         on_press:
+#             #self.parent.parent.children[0].transition.direction = 'left'
+#             app.root.ids.rootScreenManager.transition = NoTransition()
+#             app.root.ids.rootScreenManager.current = "board"
+#     Button: 
+#         text: "Get Coords"
+#         on_release: app.start_listener()
 
-<GameBoardView>
-    orientation:'vertical'
-    id: gameBoardView
-    GridLayout:
-        rows: 2
-        cols: 1
+# <GameBoardView>
+#     orientation:'vertical'
+#     id: gameBoardView
+#     GridLayout:
+#         rows: 2
+#         cols: 1
 
-        ToggleButton:
-            id: 'auto'
-            text:'Read From Screen'
+#         ToggleButton:
+#             id: 'auto'
+#             text:'Read From Screen'
 
-<PrimaryScreen>:
-    GridLayout:
-        cols: 3
-        GameBoardView:
-            id: gameBoardView
-        ToolsScreenManager:
-            id: toolScreenManager
-        Image:
-            id: boardImage
+# <PrimaryScreen>:
+#     GridLayout:
+#         cols: 3
+#         GameBoardView:
+#             id: gameBoardView
+#         ToolsScreenManager:
+#             id: toolScreenManager
+#         Image:
+#             id: boardImage
 
-<SettingsScreen>:
-    GridLayout:
-        cols: 2
-        Button:
-            text:'fuck'
+# <SettingsScreen>:
+#     GridLayout:
+#         cols: 2
+#         Button:
+#             text:'fuck'
 
-BoxLayout:
-    orientation:'vertical'
-    ToolBar:
-    ScreenManager:
-        id: rootScreenManager
-        PrimaryScreen:
-            name: "board"
-        SettingsScreen:
-            name: "settings"
+# BoxLayout:
+#     orientation:'vertical'
+#     ToolBar:
+#     ScreenManager:
+#         id: rootScreenManager
+#         PrimaryScreen:
+#             name: "board"
+#         SettingsScreen:
+#             name: "settings"
