@@ -2,8 +2,7 @@ from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scatter import Scatter
-from kivy.graphics import Rectangle, Color
-from kivy.uix.button import Button
+from kivy.graphics import Rectangle, Color 
 from kivy.uix.widget import Widget
 from kivy.core.window import Window
 
@@ -11,13 +10,19 @@ from kivy.core.window import Window
 import os
 import gameboard
 import SSIM_PIL as ssim
+import chess
 import cv2
 
-class Chess():
+class ChessGame():
     fenGameState = ""
 
     def __init__(self, **kwargs):
         self.fenGameState = gameboard.ChessBoardUI.fen()
+
+    # def get_valid_moves():
+    #     print(chess
+
+
 
     # @staticmethod
     # def initialize_chess_images_cache():
@@ -183,7 +188,11 @@ class ChessApp(App):
         chess_board = ChessBoardUI(40)
         Window.size = (chess_board.cols * chess_board.square_size, chess_board.rows * chess_board.square_size)
         return chess_board
+    
 
 
 if __name__ == "__main__":
+    import chess
+    print(chess.__version__)
+    print(dir(chess))
     ChessApp().run()

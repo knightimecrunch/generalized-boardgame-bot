@@ -36,33 +36,48 @@ from pathlib import Path
 import gameboard
 from gameboard import ChessBoardUI  # assuming you have this module
 
-class ToolsScreenManager(ScreenManager):
+class ChessToolsView(GridLayout):
+    tab_view = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.add_widget(ChessToolsView())
-
-class ChessToolsView(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        layout = GridLayout(rows=3, cols=1)
-
-        layout.add_widget(Button(text='Save Initial Chessboard', on_press=Application.initialize_chess_images_cache))
-        layout.add_widget(Label(text='temp'))
-        layout.add_widget(ChessToolsTabsView())
-        self.add_widget(layout)
+        self.rows=3
+        self.cols=1
+        self.add_widget(Button(text='Save Initial Chessboard', on_press=Application.initialize_chess_images_cache))
+        self.add_widget(Label(text='temp'))
+        self.tab_view = ChessToolsTabsView()
+        self.add_widget(self.tab_view)
 
 class ChessToolsTabsView(TabbedPanel):
     matrix_view = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.do_default_tab = False
         tileList = Core.slice(8, cv2.imread("board.png"))
-
         self.matrix_view = ImageMatrixView(8, 8, tileList)
         self.add_widget(TabbedPanelItem(content = self.matrix_view))
         self.add_widget(TabbedPanelItem(text='2', content=Label(text='Second tab content area')))
         self.add_widget(TabbedPanelItem(text='3', content=RstDocument(text='\\n'.join(("Hello world", "-----------", "You are in the third tab.")))))
+
+class ImageMatrixView(GridLayout):
+    tiles = []
+
+    def __init__(self, w, h, tiles, **kwargs):
+        super(ImageMatrixView, self).__init__(**kwargs)
+        self.instance = self
+        self.cols = w
+        self.rows = h
+        self.clear_widgets()
+        for tile in self.tiles:
+            tile = Core.openCVtoCoreImage(tile)
+            self.add_widget(kvImage(texture = tile.texture))
+
+    def set_tiles(self, tiles):
+        self.tiles = tiles           
+        self.clear_widgets()
+        for tile in self.tiles:
+            tile = Core.openCVtoCoreImage(tile)
+            self.add_widget(kvImage(texture = tile.texture))
 
 class ToolBar(GridLayout):
     def __init__(self, **kwargs):
@@ -105,6 +120,7 @@ class PrimaryScreen(Screen):
         Screen containing the board, the segmented board, and the menu for the selected game.
     """
     viewport = None
+    tools_view = None
 
     def on_kv_post(self, base_widget):
         return super().on_kv_post(base_widget)
@@ -114,21 +130,12 @@ class PrimaryScreen(Screen):
         PrimaryScreen.self = self
         layout = GridLayout(cols=4)
         layout.add_widget(GameBoardView())
-        layout.add_widget(ToolsScreenManager())
+        self.tools_view = ChessToolsView()
+        layout.add_widget(self.tools_view)
         self.viewport = Image()
         layout.add_widget(self.viewport)
         self.add_widget(layout)
 
-class ImageMatrixView(GridLayout):
-    def __init__(self, w, h, tiles, **kwargs):
-        super(ImageMatrixView, self).__init__(**kwargs)
-        self.instance = self
-        self.cols = w
-        self.rows = h
-        self.clear_widgets()
-        for tile in tiles:
-            tile = Core.openCVtoCoreImage(tile)
-            self.add_widget(kvImage(texture = tile.texture))
 
 class Core:
     # Buffer to hold current screen image
@@ -165,7 +172,7 @@ class Core:
             image.save(Core.memoryBuffer, format='png') 
         except:
             print("Invalid screen selection")
-            
+
     @staticmethod
     def redraw_board():
         """
@@ -178,8 +185,8 @@ class Core:
         Core.currentBoardImage = captureCV2
 
         # draw to sliced board view
-        # tileList = Core.slice(8, captureCV2)
-        # ChessToolsTabsView.matrix_view = ImageMatrixView(8, 8, tileList)
+        tileList = Core.slice(8, captureCV2)
+        App.get_running_app().primary_screen.tools_view.tab_view.matrix_view.set_tiles(tileList)
 
         # draw to board viewport
         processedCapture = Core.draw_grid(captureCV2, (8,8))
