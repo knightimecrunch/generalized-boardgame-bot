@@ -19,6 +19,14 @@ class ChessGame():
     def __init__(self, **kwargs):
         self.fenGameState = gameboard.ChessBoardUI.fen()
 
+    @staticmethod
+    def game_start():
+
+        
+
+
+        return 
+
     # def get_valid_moves():
     #     print(chess
 
@@ -171,6 +179,9 @@ class ChessBoardUI(Widget):
         return fen
     
     def ascii(self):
+        """
+            Returns the ASCII representation of the board.
+        """
         s = '   +------------------------+\n'
         for i in range(8):  # 8x8 board
             s += ' ' + str(8 - i) + ' |'  # display the rank
@@ -188,7 +199,6 @@ class ChessApp(App):
         chess_board = ChessBoardUI(40)
         Window.size = (chess_board.cols * chess_board.square_size, chess_board.rows * chess_board.square_size)
         return chess_board
-    
 
 
 if __name__ == "__main__":
