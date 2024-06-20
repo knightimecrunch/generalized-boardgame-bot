@@ -34,7 +34,8 @@ import cv2
 import os
 from pathlib import Path
 import gameboard
-from gameboard import ChessBoardUI  # assuming you have this module
+
+import chessutils
 
 class ChessToolsView(GridLayout):
     tab_view = None
@@ -53,7 +54,7 @@ class ChessToolsTabsView(TabbedPanel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        tileList = Core.slice(8, cv2.imread("board.png"))
+        tileList = Core.slice(8, cv2.imread("generalized-boardgame-bot/board.png"))
         self.matrix_view = ImageMatrixView(8, 8, tileList)
         self.add_widget(TabbedPanelItem(content = self.matrix_view))
         self.add_widget(TabbedPanelItem(text='2', content=Label(text='Second tab content area')))
@@ -69,19 +70,20 @@ class ImageMatrixView(GridLayout):
         self.rows = h
         self.clear_widgets()
         for tile in self.tiles:
-            tile = Core.openCVtoCoreImage(tile)
+            tile = Core.opencv_to_coreimage(tile)
             self.add_widget(kvImage(texture = tile.texture))
 
     def set_tiles(self, tiles):
         self.tiles = tiles           
         self.clear_widgets()
         for tile in self.tiles:
-            tile = Core.openCVtoCoreImage(tile)
+            tile = Core.opencv_to_coreimage(tile)
             self.add_widget(kvImage(texture = tile.texture))
 
 class ToolBar(GridLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, appref: object, **kwargs):
         super().__init__(**kwargs)
+        self.appref = appref
         self.rows = 1
         self.cols = 4
         self.size_hint_y = None
@@ -90,7 +92,7 @@ class ToolBar(GridLayout):
 
         self.add_widget(Button(text="Settings", on_press=self.change_screen))
         self.add_widget(Button(text="Board", on_press=self.change_screen))
-        self.add_widget(Button(text="Get Coords", on_release=Application.start_click_and_drag))
+        self.add_widget(Button(text="Get Coords", on_release=self.appref.start_click_and_drag))
 
     def change_screen(self, instance):
         screen_name = instance.text.lower()  # Assuming the text of the button is the screen name
@@ -138,59 +140,60 @@ class PrimaryScreen(Screen):
 
 
 class Core:
-    # Buffer to hold current screen image
-    memoryBuffer = io.BytesIO() 
-    temp = PILImage.open("board.png")
-    temp.save(memoryBuffer, format='png')
+    def __init__(self):
+        self.topLeft = (0, 0)
+        self.botRight = (100, 100)
+        
+        currentBoardImage = cv2.imread("generalized-boardgame-bot/board.png")
+        self.currentBoardImage = currentBoardImage
 
-    currentBoardImage = cv2.imread("board.png")
-    
-    # Coordinates for on-screen for board
-    topLeft = (0, 0)
-    botRight = (100, 100)
+        # Buffer to hold current screen image
+        memoryBuffer = io.BytesIO() 
+        temp = PILImage.open("generalized-boardgame-bot/board.png")
+        temp.save(memoryBuffer, format='png')
+        self.memoryBuffer = memoryBuffer
 
-    def board_loop(dt):
-        Core.write_screen_to_buffer()
-        Core.redraw_board()
+    def board_loop(self, dt):
+        self.write_screen_to_buffer()
+        self.redraw_board()
 
-    def write_screen_to_buffer(*args):
+    def write_screen_to_buffer(self, *args):
         """
             Copies the contents of the screen from the top left bound to the bottom right bound to memory.
         """
-        if Core.topLeft == Core.botRight: # default out when no drag occurred
-            Core.topLeft = (0, 0)
-            Core.botRight = (100, 100)
+        if self.topLeft == self.botRight: # default out when no drag occurred
+            self.topLeft = (0, 0)
+            self.botRight = (100, 100)
         try:
-            topLeft = Core.topLeft
-            botRight = Core.botRight
+            topLeft = self.topLeft
+            botRight = self.botRight
             sct = mss.mss()
             width = abs(topLeft[0] - botRight[0]) 
             height = abs(topLeft[1] - botRight[1]) 
             bounding_box = {'top': topLeft[1], 'left': topLeft[0], 'width': width, 'height': height}
             image = sct.grab(bounding_box)
             image = PILImage.frombytes("RGB", image.size, image.bgra, "raw", "BGRX") 
-            image.save(Core.memoryBuffer, format='png') 
+            image.save(self.memoryBuffer, format='png') 
         except:
             print("Invalid screen selection")
 
-    @staticmethod
-    def redraw_board():
+    def redraw_board(self):
         """
             Redraws on-screen board, adding a grid, re-read from memory is require from conversion to CoreImage.
         """
         # reads into CV2 to make image adjustments, might be faster to read directly to CoreImage
-        Core.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
-        captureCV2 = np.frombuffer(Core.memoryBuffer.getvalue(), dtype=np.uint8)
+        self.memoryBuffer.seek(0) #after writing return to 0 index of memory for reading
+        captureCV2 = np.frombuffer(self.memoryBuffer.getvalue(), dtype=np.uint8)
         captureCV2 = cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
-        Core.currentBoardImage = captureCV2
+        self.currentBoardImage = captureCV2
 
         # draw to sliced board view
-        tileList = Core.slice(8, captureCV2)
+        tileList = self.slice(8, captureCV2)
         App.get_running_app().primary_screen.tools_view.tab_view.matrix_view.set_tiles(tileList)
 
         # draw to board viewport
-        processedCapture = Core.draw_grid(captureCV2, (8,8))
-        capture = Core.openCVtoCoreImage(processedCapture)
+        processedCapture = self.draw_grid(captureCV2, (8,8))
+        capture = self.opencv_to_coreimage(processedCapture)
         App.get_running_app().primary_screen.viewport.texture = capture.texture
 
     @staticmethod
@@ -207,7 +210,7 @@ class Core:
         return img
 
     @staticmethod
-    def slice(nslices, boardImage = currentBoardImage):
+    def slice(nslices, boardImage):
         h, w, channels = boardImage.shape
         slicesY = [(h // nslices) * n for n in range(1, nslices + 1)]
         slicesX = [(w // nslices) * n for n in range(1, nslices + 1)]
@@ -225,7 +228,7 @@ class Core:
         return tiles
     
     @staticmethod
-    def openCVtoCoreImage(anOpenCV):
+    def opencv_to_coreimage(anOpenCV):
         is_success, buffer = cv2.imencode(".png", anOpenCV)
         tempBuffer = io.BytesIO(buffer)
         tempBuffer.seek(0)
@@ -233,42 +236,46 @@ class Core:
         tempBuffer.close()
         return aCoreImage
     
-    def get_board_as_CV2():
-        Core.memoryBuffer.seek(0)
+    def get_board_as_CV2(self):
+        self.memoryBuffer.seek(0)
         captureCV2 = np.frombuffer(Core.memoryBuffer.getvalue(), dtype = np.uint8)
         return cv2.imdecode(captureCV2, cv2.IMREAD_ANYCOLOR)
     
-    def get_board_as_CoreImage():
-        Core.memoryBuffer.seek(0)
+    def get_board_as_CoreImage(self):
+        self.memoryBuffer.seek(0)
         return CoreImage(io.BytesIO(Core.memoryBuffer.read()), ext='png')
 
 class Application(App):
-    gameType = "chess"
-    primary_screen = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.gameType = "chess"
+        self.primary_screen = None
+        self.core = Core()
 
-    def update_board_corners(x, y, button, pressed):
+    def update_board_corners(self, x, y, button, pressed):
         if pressed:
-            Core.topLeft = (x, y)
+            self.core.topLeft = (x, y)
         print('{0} at {1}'.format('Pressed' if pressed else 'Released', (x, y)))
         if not pressed:
-            Core.botRight = (x,y)
-            Core.write_screen_to_buffer()
+            self.core.botRight = (x,y)
+            self.core.write_screen_to_buffer()
             return False
     
-    def initialize_chess_images_cache(_):
-        gameboard.Chess.initialize_chess_images_cache()
+    def initialize_chess_images_cache(self):
+        chessutils.initialize_chess_images_cache(self.core.currentBoardImage)
 
-    def start_click_and_drag(null): 
-        with mouse.Listener(on_click=Application.update_board_corners) as listener:
-            listener.join() 
+    def start_click_and_drag(self, instance):
+        # Called from button press
+        with mouse.Listener(on_click=self.update_board_corners) as listener:
+            listener.join()
 
     def build(self):
         self.title = "ChessBotYZ"
-        Clock.schedule_interval(Core.board_loop, 0.25)
+        Clock.schedule_interval(self.core.board_loop, 0.25)
 
         layout = BoxLayout()
         layout.orientation = 'vertical'
-        layout.add_widget(ToolBar(size_hint=(1, 0.3)))  # Adjusted size_hint
+        layout.add_widget(ToolBar(self, size_hint=(1, 0.3)))  # Adjusted size_hint
         screen_manager = ScreenManager()
         self.primary_screen = PrimaryScreen(name='primary')
         screen_manager.add_widget(self.primary_screen)  # Added name
